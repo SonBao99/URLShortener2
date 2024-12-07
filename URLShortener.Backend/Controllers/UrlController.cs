@@ -5,7 +5,6 @@ using UrlShortener.Backend.Models;
 
 namespace UrlShortener.Backend.Controllers
 {
-    [Route("api/Url")]
     [ApiController]
     public class UrlController : ControllerBase
     {
@@ -16,7 +15,7 @@ namespace UrlShortener.Backend.Controllers
             _context = context;
         }
 
-        // POST api/Url/shorten
+        // POST /shorten
         [HttpPost("shorten")]
         public async Task<IActionResult> ShortenUrl([FromBody] UrlRequest urlRequest)
         {
@@ -38,7 +37,7 @@ namespace UrlShortener.Backend.Controllers
             return Ok(new { shortenedUrl = $"https://localhost:7162/{newUrl.ShortCode}" });
         }
 
-        // GET api/Url/{shortCode}
+        // GET /{shortCode}
         [HttpGet("{shortCode}")]
         public async Task<IActionResult> RedirectToOriginalUrl(string shortCode)
         {

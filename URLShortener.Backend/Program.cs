@@ -5,8 +5,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
-
-// Add Entity Framework services
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -23,20 +21,23 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthorization();
 
-// This will allow redirection from /{shortCode} without /api/Url prefix
 app.UseRouting();
+
 app.UseEndpoints(endpoints =>
 {
-    // Custom route for redirecting directly from the short code
+    // Route for POST /shorten
     endpoints.MapControllerRoute(
-        name: "shortCode",
+        name: "shorten",
+        pattern: "shorten",
+        defaults: new { controller = "Url", action = "ShortenUrl" });
+
+    // Route for GET /{shortCode}
+    endpoints.MapControllerRoute(
+        name: "redirect",
         pattern: "{shortCode}",
         defaults: new { controller = "Url", action = "RedirectToOriginalUrl" });
 });
-
-app.UseAuthorization();
-
-app.MapControllers();
 
 app.Run();
