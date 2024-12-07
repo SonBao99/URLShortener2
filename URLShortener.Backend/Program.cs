@@ -11,6 +11,15 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// CORS Policy to allow React app to communicate with the API
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp", builder =>
+        builder.WithOrigins("http://localhost:60443")  // React development server
+               .AllowAnyMethod()
+               .AllowAnyHeader());
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -20,24 +29,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Enable HTTPS redirection
 app.UseHttpsRedirection();
-app.UseAuthorization();
 
+// Use CORS for the React app
+app.UseCors("AllowReactApp");
+
+// Enable routing and endpoint mapping
 app.UseRouting();
 
-app.UseEndpoints(endpoints =>
-{
-    // Route for POST /shorten
-    endpoints.MapControllerRoute(
-        name: "shorten",
-        pattern: "shorten",
-        defaults: new { controller = "Url", action = "ShortenUrl" });
+// Enable authorization (if needed, depending on your app's requirements)
+app.UseAuthorization();
 
-    // Route for GET /{shortCode}
-    endpoints.MapControllerRoute(
-        name: "redirect",
-        pattern: "{shortCode}",
-        defaults: new { controller = "Url", action = "RedirectToOriginalUrl" });
-});
+// Map API controllers
+app.MapControllers();
 
 app.Run();
