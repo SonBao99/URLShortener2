@@ -81,7 +81,7 @@ namespace UrlShortener.Backend.Controllers
 
     public class UrlRequest
     {
-        public string OriginalUrl { get; set; }
-        public string CustomAlias { get; set; }
+        public required string OriginalUrl { get; set; }
+        public string? CustomAlias { get; set; }
     }
 }
