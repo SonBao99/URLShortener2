@@ -1,0 +1,6 @@
+@URLShortener.Auth_HostAddress = http://localhost:5267
+
+GET {{URLShortener.Auth_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,6 @@
+@URLShortener.ApiGateway_HostAddress = http://localhost:5138
+
+GET {{URLShortener.ApiGateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
