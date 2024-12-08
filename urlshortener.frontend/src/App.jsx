@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
+import AuthCallback from './components/AuthCallback';
+import { useState } from 'react';
 import { useAuth } from './AuthContext';
-import AuthForm from './components/AuthForm';
 import UrlShortener from './components/UrlShortener';
 import MyUrls from './components/MyUrls';
+import AuthForm from './components/AuthForm';
+import Profile from './components/Profile';
+import { UserProfileButton } from './components/Profile';
 import './App.css';
 
 const AppContent = () => {
@@ -11,6 +15,7 @@ const AppContent = () => {
     const [showAuth, setShowAuth] = useState(false);
     const [initialAuthMode, setInitialAuthMode] = useState('login');
     const [showMyUrls, setShowMyUrls] = useState(false);
+    const [showProfile, setShowProfile] = useState(false);
 
     const handleAuthClick = (mode) => {
         setInitialAuthMode(mode);
@@ -24,26 +29,32 @@ const AppContent = () => {
                 <nav className="nav-links">
                     <a href="#features">Features</a>
                     <a href="#pricing">Plans</a>
-                    <button 
+                    <button
                         onClick={() => setShowMyUrls(true)}
                         className="nav-button"
                     >
                         My URLs
                     </button>
                     {user ? (
-                        <button onClick={logout} className="auth-button">
-                            Logout
-                        </button>
+                        <div className="auth-buttons">
+                            <UserProfileButton
+                                user={user}
+                                onClick={() => setShowProfile(true)}
+                            />
+                            <button onClick={logout} className="auth-button">
+                                Logout
+                            </button>
+                        </div>
                     ) : (
                         <div className="auth-buttons">
-                            <button 
-                                onClick={() => handleAuthClick('login')} 
+                            <button
+                                onClick={() => handleAuthClick('login')}
                                 className="auth-button"
                             >
                                 Sign In
                             </button>
-                            <button 
-                                onClick={() => handleAuthClick('register')} 
+                            <button
+                                onClick={() => handleAuthClick('register')}
                                 className="auth-button auth-button-primary"
                             >
                                 Sign Up
@@ -58,14 +69,15 @@ const AppContent = () => {
                     localStorage.setItem('recentUrls', JSON.stringify([url, ...recentUrls].slice(0, 10)));
                 }} />
                 {showMyUrls && <MyUrls onClose={() => setShowMyUrls(false)} />}
+                {showProfile && <Profile onClose={() => setShowProfile(false)} />}
                 {showAuth && (
                     <div className="auth-overlay" onClick={(e) => {
                         if (e.target.className === 'auth-overlay') {
                             setShowAuth(false);
                         }
                     }}>
-                        <AuthForm 
-                            onClose={() => setShowAuth(false)} 
+                        <AuthForm
+                            onClose={() => setShowAuth(false)}
                             initialMode={initialAuthMode}
                         />
                     </div>
@@ -77,9 +89,14 @@ const AppContent = () => {
 
 const App = () => {
     return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
+        <Router>
+            <AuthProvider>
+                <Routes>
+                    <Route path="/auth-callback" element={<AuthCallback />} />
+                    <Route path="/*" element={<AppContent />} />
+                </Routes>
+            </AuthProvider>
+        </Router>
     );
 };
 

@@ -7,6 +7,7 @@ namespace URLShortener.Auth.Models
     {
         // You can add custom fields here if necessary, for example:
         public string FullName { get; set; }
+        public string? Avatar { get; set; }
         // Other properties can go here
     }
 }

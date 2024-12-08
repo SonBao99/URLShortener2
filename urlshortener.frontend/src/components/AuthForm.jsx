@@ -52,6 +52,10 @@ const AuthForm = ({ onClose, initialMode }) => {
         setTimeout(onClose, 300);
     };
 
+    const handleGoogleLogin = () => {
+        window.location.href = 'https://localhost:7214/api/auth/google-login';
+    };
+
     return (
         <div className="auth-overlay" onClick={(e) => {
             if (e.target.className === 'auth-overlay') handleClose();
@@ -140,7 +144,13 @@ const AuthForm = ({ onClose, initialMode }) => {
                             <p>Or login via:</p>
                             <div className="social-buttons">
                                 <button type="button" className="social-btn facebook">f</button>
-                                <button type="button" className="social-btn google">G</button>
+                                <button 
+                                    type="button" 
+                                    className="social-btn google" 
+                                    onClick={handleGoogleLogin}
+                                >
+                                    G
+                                </button>
                                 <button type="button" className="social-btn twitter">t</button>
                                 <button type="button" className="social-btn microsoft">M</button>
                             </div>

@@ -5,22 +5,40 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using URLShortener.Auth.Data;
 using URLShortener.Auth.Models;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using System.Security.Claims;
+using Microsoft.AspNetCore.WebUtilities;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add CORS to allow frontend and Ocelot Gateway to connect
+// Add CORS configuration
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddDefaultPolicy(builder =>
     {
-        policy.WithOrigins(
-                "https://localhost:60443", // Frontend
-                "http://localhost:60443",   // Frontend (HTTP)
-                "https://localhost:5000"    // Ocelot Gateway
+        builder
+            .WithOrigins(
+                "http://localhost:60443",
+                "https://localhost:60443",
+                "http://localhost:5000",
+                "https://localhost:5000",
+                "http://localhost:7214",
+                "https://localhost:7214"
             )
+            .AllowAnyMethod()
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowCredentials();
     });
+});
+
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp", builder =>
+        builder.WithOrigins("http://localhost:60443")
+               .AllowAnyMethod()
+               .AllowAnyHeader()
+               .AllowCredentials());
 });
 
 // Add DbContext with SQL Server and Identity
@@ -35,38 +53,76 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 // Add authentication and authorization services
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultAuthenticateScheme = "ApplicationCookie";
+    options.DefaultSignInScheme = "ExternalCookie";
+    options.DefaultChallengeScheme = "Google";
 })
-.AddJwtBearer(options =>
+.AddCookie("ApplicationCookie")
+.AddCookie("ExternalCookie", options =>
 {
-    var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-    options.TokenValidationParameters = new TokenValidationParameters
+    options.Cookie.Name = ".AspNetCore.External";
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+})
+.AddGoogle(options =>
+{
+    options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
+    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+    options.CallbackPath = "/api/auth/google-callback";
+    options.SaveTokens = true;
+    options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+    options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
+    
+    options.Events = new OAuthEvents
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = "https://localhost:7214",  // Make sure this matches the Ocelot Gateway configuration
-        ValidAudience = "https://localhost:5000", // Match with Gateway configuration
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("Sveřepí šakali zavile vyli na bílý měsíc"))
+        OnRedirectToAuthorizationEndpoint = context =>
+        {
+            context.RedirectUri = context.RedirectUri;
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        },
+        OnRemoteFailure = context =>
+        {
+            context.Response.Redirect($"{builder.Configuration["FrontendUrl"]}/auth-callback?error={Uri.EscapeDataString(context.Failure?.Message ?? "Authentication failed")}");
+            context.HandleResponse();
+            return Task.CompletedTask;
+        }
     };
 });
 
+// Add JWT Bearer configuration separately
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+            ValidAudience = builder.Configuration["JwtSettings:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]))
+        };
+    });
 
 // Add services to the container
 builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// Enable CORS to allow Ocelot API Gateway to make requests
-app.UseCors("AllowAll");
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
 
-// Use Authentication and Authorization middleware
+app.UseHttpsRedirection();
+app.UseRouting();
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Map controllers (ensure your routes are correctly configured)
 app.MapControllers();
 
 app.Run();

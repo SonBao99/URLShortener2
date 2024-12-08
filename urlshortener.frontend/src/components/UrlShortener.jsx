@@ -9,7 +9,38 @@ const UrlShortener = ({ onUrlShortened }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [showShortenForm, setShowShortenForm] = useState(true);
+    const [notification, setNotification] = useState('');
     const { user } = useAuth();
+
+    const showNotification = (message) => {
+        setNotification(message);
+        setTimeout(() => setNotification(''), 3000); // Hide after 3 seconds
+    };
+
+    const handleShare = async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Shared URL',
+                    text: 'Check out this link:',
+                    url: shortenedUrl
+                });
+            } catch (err) {
+                // Fallback to clipboard if share is cancelled or fails
+                await navigator.clipboard.writeText(shortenedUrl);
+                showNotification('URL copied to clipboard!');
+            }
+        } else {
+            // Fallback for browsers that don't support sharing
+            await navigator.clipboard.writeText(shortenedUrl);
+            showNotification('URL copied to clipboard!');
+        }
+    };
+
+    const handleCopy = async () => {
+        await navigator.clipboard.writeText(shortenedUrl);
+        showNotification('URL copied to clipboard!');
+    };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -60,6 +91,11 @@ const UrlShortener = ({ onUrlShortened }) => {
 
     return (
         <div className="url-shortener">
+            {notification && (
+                <div className="notification">
+                    {notification}
+                </div>
+            )}
             {showShortenForm ? (
                 <>
                     <div className="shortener-header">
@@ -130,19 +166,24 @@ const UrlShortener = ({ onUrlShortened }) => {
                             </button>
                             <button 
                                 className="action-button qr-button"
+                                onClick={() => {
+                                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shortenedUrl)}`;
+                                    window.open(qrUrl, '_blank');
+                                }}
                                 title="Generate QR Code"
                             >
                                 QR
                             </button>
                             <button 
                                 className="action-button share-button"
+                                onClick={handleShare}
                                 title="Share URL"
                             >
                                 Share
                             </button>
                             <button 
                                 className="action-button copy-button"
-                                onClick={() => navigator.clipboard.writeText(shortenedUrl)}
+                                onClick={handleCopy}
                                 title="Copy to clipboard"
                             >
                                 Copy
