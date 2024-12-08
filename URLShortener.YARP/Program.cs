@@ -15,7 +15,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = "https://localhost:7214";
-        options.Audience = "https://localhost:5000";
+        options.Audience = "https://localhost:7000";
         options.RequireHttpsMetadata = true;
     });
 
@@ -26,6 +26,21 @@ builder.Services.AddAuthorization();
 // Add YARP services
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder
+            .WithOrigins(
+                "http://localhost:60443",
+                "https://localhost:60443"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
+});
 
 var app = builder.Build();
 
@@ -39,6 +54,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // Use Authentication and Authorization
+app.UseCors();  // Add this before UseAuthentication
 app.UseAuthentication(); // Enables Authentication middleware
 app.UseAuthorization();  // Enables Authorization middleware
 

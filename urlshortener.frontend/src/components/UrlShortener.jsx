@@ -58,7 +58,7 @@ const UrlShortener = ({ onUrlShortened }) => {
                 headers['Authorization'] = `Bearer ${user.token}`;
             }
 
-            const response = await fetch('https://localhost:7162/shorten', {
+            const response = await fetch('https://localhost:7000/api/shorten', {
                 method: 'POST',
                 headers,
                 body: JSON.stringify({
