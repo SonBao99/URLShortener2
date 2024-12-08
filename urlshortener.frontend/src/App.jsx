@@ -3,12 +3,14 @@ import { AuthProvider } from './AuthContext';
 import { useAuth } from './AuthContext';
 import AuthForm from './components/AuthForm';
 import UrlShortener from './components/UrlShortener';
+import MyUrls from './components/MyUrls';
 import './App.css';
 
 const AppContent = () => {
     const { user, logout } = useAuth();
     const [showAuth, setShowAuth] = useState(false);
     const [initialAuthMode, setInitialAuthMode] = useState('login');
+    const [showMyUrls, setShowMyUrls] = useState(false);
 
     const handleAuthClick = (mode) => {
         setInitialAuthMode(mode);
@@ -22,7 +24,12 @@ const AppContent = () => {
                 <nav className="nav-links">
                     <a href="#features">Features</a>
                     <a href="#pricing">Plans</a>
-                    <a href="#blog">Blog</a>
+                    <button 
+                        onClick={() => setShowMyUrls(true)}
+                        className="nav-button"
+                    >
+                        My URLs
+                    </button>
                     {user ? (
                         <button onClick={logout} className="auth-button">
                             Logout
@@ -46,7 +53,11 @@ const AppContent = () => {
                 </nav>
             </header>
             <main className="app-main">
-                <UrlShortener />
+                <UrlShortener onUrlShortened={(url) => {
+                    const recentUrls = JSON.parse(localStorage.getItem('recentUrls') || '[]');
+                    localStorage.setItem('recentUrls', JSON.stringify([url, ...recentUrls].slice(0, 10)));
+                }} />
+                {showMyUrls && <MyUrls onClose={() => setShowMyUrls(false)} />}
                 {showAuth && (
                     <div className="auth-overlay" onClick={(e) => {
                         if (e.target.className === 'auth-overlay') {

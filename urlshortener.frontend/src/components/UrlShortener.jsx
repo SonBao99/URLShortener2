@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './UrlShortener.css';
 import { useAuth } from '../AuthContext';
 
-const UrlShortener = () => {
+const UrlShortener = ({ onUrlShortened }) => {
     const [originalUrl, setOriginalUrl] = useState('');
     const [customAlias, setCustomAlias] = useState('');
     const [shortenedUrl, setShortenedUrl] = useState('');
@@ -42,6 +42,7 @@ const UrlShortener = () => {
 
             const data = await response.json();
             setShortenedUrl(data.shortenedUrl);
+            onUrlShortened({ originalUrl, shortenedUrl: data.shortenedUrl });
             setShowShortenForm(false);
         } catch (err) {
             setError('Failed to shorten the URL. Please try again.');

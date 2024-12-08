@@ -33,9 +33,9 @@
 .app-main {
   flex: 1;
   display: grid;
-  grid-template-columns: 500px 1fr;
-  padding: 2rem;
-  max-width: 1200px;
+  grid-template-columns: 600px 1fr;
+  padding: 3rem;
+  max-width: 1400px;
   margin: 0;
   width: 100%;
   gap: 4rem;
@@ -121,7 +121,16 @@
   height: 20px;
   color: #4CAF50;
 }
-
+@media (max-width: 1200px) {
+  .app-main {
+      grid-template-columns: 1fr;
+      padding: 2rem;
+  }
+  
+  .url-shortener {
+      margin: 0 auto;
+  }
+}
 @media (max-width: 768px) {
   .app-main {
     flex-direction: column;

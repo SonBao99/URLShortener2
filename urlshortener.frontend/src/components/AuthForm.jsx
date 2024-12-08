@@ -30,6 +30,7 @@ const AuthForm = ({ onClose, initialMode }) => {
         try {
             if (isLogin) {
                 await login(formData.email, formData.password);
+                onClose();
             } else {
                 await register(
                     formData.username,
@@ -37,7 +38,7 @@ const AuthForm = ({ onClose, initialMode }) => {
                     formData.password,
                     formData.fullName
                 );
-                setIsLogin(true); // Switch to login after successful registration
+                setIsLogin(true);
             }
         } catch (err) {
             setError(err.response?.data?.message || 'An error occurred');
@@ -48,73 +49,104 @@ const AuthForm = ({ onClose, initialMode }) => {
 
     const handleClose = () => {
         setIsClosing(true);
-        setTimeout(onClose, 300); // Match animation duration
+        setTimeout(onClose, 300);
     };
 
     return (
-        <div className={`auth-container ${isClosing ? 'slide-out' : ''}`}>
-            <button className="auth-close" onClick={handleClose}>×</button>
-            <div className="auth-box">
-                <h2>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
-                <form onSubmit={handleSubmit}>
-                    {!isLogin && (
-                        <>
-                            <div className="form-group">
-                                <label>Username</label>
-                                <input
-                                    type="text"
-                                    name="username"
-                                    value={formData.username}
-                                    onChange={handleChange}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Full Name</label>
-                                <input
-                                    type="text"
-                                    name="fullName"
-                                    value={formData.fullName}
-                                    onChange={handleChange}
-                                    required
-                                />
-                            </div>
-                        </>
-                    )}
-                    <div className="form-group">
-                        <label>Email</label>
-                        <input
-                            type="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                        />
+        <div className="auth-overlay" onClick={(e) => {
+            if (e.target.className === 'auth-overlay') handleClose();
+        }}>
+            <div className={`auth-container ${isClosing ? 'slide-out' : ''}`}>
+                <button className="auth-close" onClick={handleClose}>×</button>
+                <div className="auth-box">
+                    <div className="auth-logo">
+                        <h1>LINKSNAP</h1>
+                        <p>Welcome to LinkSnap</p>
                     </div>
-                    <div className="form-group">
-                        <label>Password</label>
-                        <input
-                            type="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
-                        />
-                    </div>
-                    {error && <div className="error-message">{error}</div>}
-                    <button type="submit" className="auth-submit" disabled={loading}>
-                        {loading ? 'Processing...' : (isLogin ? 'Login' : 'Register')}
-                    </button>
-                </form>
-                <p className="auth-switch">
-                    {isLogin ? "Don't have an account? " : "Already have an account? "}
-                    <button 
-                        onClick={() => setIsLogin(!isLogin)}
-                        className="switch-button"
-                    >
-                        {isLogin ? 'Register' : 'Login'}
-                    </button>
-                </p>
+
+                    <form onSubmit={handleSubmit}>
+                        {!isLogin && (
+                            <>
+                                <div className="form-group">
+                                    <input
+                                        type="text"
+                                        name="username"
+                                        value={formData.username}
+                                        onChange={handleChange}
+                                        placeholder="Username"
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <input
+                                        type="text"
+                                        name="fullName"
+                                        value={formData.fullName}
+                                        onChange={handleChange}
+                                        placeholder="Full Name"
+                                        required
+                                    />
+                                </div>
+                            </>
+                        )}
+                        <div className="form-group">
+                            <input
+                                type="email"
+                                name="email"
+                                value={formData.email}
+                                onChange={handleChange}
+                                placeholder="Email"
+                                required
+                            />
+                        </div>
+                        <div className="form-group">
+                            <input
+                                type="password"
+                                name="password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="Password"
+                                required
+                            />
+                        </div>
+
+                        {isLogin && (
+                            <div className="auth-options">
+                                <label className="remember-me">
+                                    <input type="checkbox" /> Remember me
+                                </label>
+                                <a href="#" className="forgot-password">Forgot Password?</a>
+                            </div>
+                        )}
+
+                        {error && <div className="error-message">{error}</div>}
+
+                        <button type="submit" className="auth-submit" disabled={loading}>
+                            {loading ? 'Processing...' : (isLogin ? 'Sign In' : 'Sign Up')}
+                        </button>
+
+                        <div className="auth-switch">
+                            {isLogin ? "Don't have an account? " : "Already have an account? "}
+                            <button
+                                type="button"
+                                onClick={() => setIsLogin(!isLogin)}
+                                className="switch-button"
+                            >
+                                {isLogin ? 'Sign Up' : 'Sign In'}
+                            </button>
+                        </div>
+
+                        <div className="social-login">
+                            <p>Or login via:</p>
+                            <div className="social-buttons">
+                                <button type="button" className="social-btn facebook">f</button>
+                                <button type="button" className="social-btn google">G</button>
+                                <button type="button" className="social-btn twitter">t</button>
+                                <button type="button" className="social-btn microsoft">M</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     );
