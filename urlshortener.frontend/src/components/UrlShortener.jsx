@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './UrlShortener.css';
+import { useAuth } from '../AuthContext';
 
 const UrlShortener = () => {
     const [originalUrl, setOriginalUrl] = useState('');
@@ -8,6 +9,7 @@ const UrlShortener = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [showShortenForm, setShowShortenForm] = useState(true);
+    const { user } = useAuth();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -16,11 +18,18 @@ const UrlShortener = () => {
         setShortenedUrl('');
 
         try {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Add authorization header only if user is logged in
+            if (user?.token) {
+                headers['Authorization'] = `Bearer ${user.token}`;
+            }
+
             const response = await fetch('https://localhost:7162/shorten', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 body: JSON.stringify({
                     originalUrl: originalUrl,
                     customAlias: customAlias,

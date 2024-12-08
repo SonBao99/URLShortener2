@@ -8,14 +8,18 @@ using URLShortener.Auth.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add CORS to allow Ocelot Gateway to connect
+// Add CORS to allow frontend and Ocelot Gateway to connect
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowOcelot", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("https://localhost:5000") // The Ocelot API Gateway URL
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins(
+                "https://localhost:60443", // Frontend
+                "http://localhost:60443",   // Frontend (HTTP)
+                "https://localhost:5000"    // Ocelot Gateway
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
 
@@ -56,7 +60,7 @@ builder.Services.AddControllers();
 var app = builder.Build();
 
 // Enable CORS to allow Ocelot API Gateway to make requests
-app.UseCors("AllowOcelot");
+app.UseCors("AllowAll");
 
 // Use Authentication and Authorization middleware
 app.UseAuthentication();
