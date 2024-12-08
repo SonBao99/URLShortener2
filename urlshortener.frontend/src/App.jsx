@@ -1,35 +1,63 @@
-import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
 import './App.css';
 import UrlShortener from './components/UrlShortener';
 
 function App() {
-    const [count, setCount] = useState(0);
-
     return (
         <div className="App">
-            <UrlShortener />
-            <div>
-                <a href="https://vite.dev" target="_blank">
-                    <img src={viteLogo} className="logo" alt="Vite logo" />
-                </a>
-                <a href="https://react.dev" target="_blank">
-                    <img src={reactLogo} className="logo react" alt="React logo" />
-                </a>
-            </div>
-            <h1>Vite + React</h1>
-            <div className="card">
-                <button onClick={() => setCount((count) => count + 1)}>
-                    count is {count}
-                </button>
-                <p>
-                    Edit <code>src/App.jsx</code> and save to test HMR
-                </p>
-            </div>
-            <p className="read-the-docs">
-                Click on the Vite and React logos to learn more
-            </p>
+            <header className="app-header">
+                <h1>LinkSnap</h1>
+                <nav className="nav-links">
+                    <a href="#features">Features</a>
+                    <a href="#pricing">Plans</a>
+                    <a href="#blog">Blog</a>
+                    <a href="#signin">Sign In</a>
+                </nav>
+            </header>
+            <main className="app-main">
+                <UrlShortener />
+                <div className="text-content">
+                    <h2 className="main-title">The Original URL Shortener</h2>
+                    <p className="main-subtitle">Create shorter URLs with LinkSnap.</p>
+                    <p className="additional-info">
+                        Want more out of your link shortener? Track link analytics, use 
+                        branded domains for fully custom links, and manage your links 
+                        with our paid plans.
+                    </p>
+                    <div className="action-buttons">
+                        <a href="#plans" className="view-plans-btn">View Plans</a>
+                        <a href="#signup" className="create-account-btn">Create Free Account</a>
+                    </div>
+                    <div className="features-section">
+                        <h3 className="features-title">LinkSnap plans include:</h3>
+                        <div className="features-list">
+                            <div className="feature-item">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                                </svg>
+                                <span>Detailed Link Analytics</span>
+                            </div>
+                            <div className="feature-item">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                                </svg>
+                                <span>Bulk Short URLs</span>
+                            </div>
+                            <div className="feature-item">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                                </svg>
+                                <span>Fully Branded Domains</span>
+                            </div>
+                            <div className="feature-item">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                                </svg>
+                                <span>Link Management Features</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
         </div>
     );
 }
