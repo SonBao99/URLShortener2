@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -7,6 +7,17 @@ using URLShortener.Auth.Data;
 using URLShortener.Auth.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Add CORS to allow Ocelot Gateway to connect
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowOcelot", policy =>
+    {
+        policy.WithOrigins("https://localhost:5000") // The Ocelot API Gateway URL
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 // Add DbContext with SQL Server and Identity
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -17,7 +28,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
-// Add authentication and authorization
+// Add authentication and authorization services
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -32,21 +43,26 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
+        ValidIssuer = "https://localhost:7214",  // Make sure this matches the Ocelot Gateway configuration
+        ValidAudience = "https://localhost:5000", // Match with Gateway configuration
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("Sveřepí šakali zavile vyli na bílý měsíc"))
     };
 });
 
-// Add services to the container.
+
+// Add services to the container
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
+// Enable CORS to allow Ocelot API Gateway to make requests
+app.UseCors("AllowOcelot");
 
 // Use Authentication and Authorization middleware
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Map controllers (ensure your routes are correctly configured)
 app.MapControllers();
 
 app.Run();
