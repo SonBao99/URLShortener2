@@ -111,18 +111,18 @@
 }
 
 .original-url {
-    color: #6b7280;
+    color: #079e0f;
     font-size: 0.875rem;
     word-break: break-all;
     margin-bottom: 0.75rem;
-    padding-left: 2.25rem;
+    padding-left: 1.1rem;
 }
 
 .url-meta {
     display: flex;
     gap: 1rem;
     color: #6b7280;
-    font-size: 0.75rem;
+    font-size: 0.9rem;
     padding-left: 2.25rem;
 }
 
@@ -141,7 +141,18 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    white-space: nowrap;
+    min-width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.action-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
 }
 
 .action-btn.primary {
@@ -161,6 +172,17 @@
 }
 
 .action-btn.secondary:hover {
+    background-color: #0284c7;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn.qr {
+    background-color: #0ea5e9;
+    color: white;
+}
+
+.action-btn.qr:hover {
     background-color: #0284c7;
     transform: translateY(-1px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);

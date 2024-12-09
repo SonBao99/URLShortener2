@@ -1,11 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import './MyUrls.css';
 import { useAuth } from '../AuthContext';
+import QRModal from './QRModal';
+
+// Add these SVG icons as components
+const CopyIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+    </svg>
+);
+
+const QRIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <rect x="7" y="7" width="3" height="3"></rect>
+        <rect x="14" y="7" width="3" height="3"></rect>
+        <rect x="7" y="14" width="3" height="3"></rect>
+        <rect x="14" y="14" width="3" height="3"></rect>
+    </svg>
+);
+
+const ShareIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="18" cy="5" r="3"></circle>
+        <circle cx="6" cy="12" r="3"></circle>
+        <circle cx="18" cy="19" r="3"></circle>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+    </svg>
+);
+
+const OpenIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+        <polyline points="15 3 21 3 21 9"></polyline>
+        <line x1="10" y1="14" x2="21" y2="3"></line>
+    </svg>
+);
 
 const MyUrls = ({ onClose }) => {
     const [recentUrls, setRecentUrls] = useState([]);
     const [isClosing, setIsClosing] = useState(false);
     const [showClearWarning, setShowClearWarning] = useState(false);
+    const [showQR, setShowQR] = useState(false);
+    const [selectedUrl, setSelectedUrl] = useState('');
     const { user } = useAuth();
 
     useEffect(() => {
@@ -71,6 +110,25 @@ const MyUrls = ({ onClose }) => {
         }
     };
 
+    const formatTimeAgo = (dateString) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+
+        if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+        if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        return 'just now';
+    };
+
+    const handleQRClick = (url) => {
+        setSelectedUrl(url);
+        setShowQR(true);
+    };
+
     return (
         <div className="my-urls-overlay" onClick={(e) => {
             if (e.target.className === 'my-urls-overlay') handleClose();
@@ -105,10 +163,7 @@ const MyUrls = ({ onClose }) => {
                                             >
                                                 {url.shortenedUrl}
                                             </a>
-                                            <span className="affiliate-tag">
-                                                <span>Affiliate link</span>
-                                                <span className="info-icon">ℹ</span>
-                                            </span>
+                                            
                                         </div>
                                         <div className="original-url">
                                             <a 
@@ -121,9 +176,9 @@ const MyUrls = ({ onClose }) => {
                                             </a>
                                         </div>
                                         <div className="url-meta">
-                                            <span>Tracking Disabled</span>
-                                            <span>•</span>
-                                            <span>an hour ago</span>
+                                            <span>{url.usageCount} click{url.usageCount !== 1 ? 's' : ''}</span>
+                                            <span>|</span>
+                                            <span>{formatTimeAgo(url.createdAt)}</span>
                                         </div>
                                         <div className="url-actions">
                                             <button 
@@ -131,16 +186,13 @@ const MyUrls = ({ onClose }) => {
                                                 onClick={() => navigator.clipboard.writeText(url.shortenedUrl)}
                                                 title="Copy to clipboard"
                                             >
-                                                Copy
+                                                <CopyIcon /> Copy
                                             </button>
                                             <button 
                                                 className="action-btn secondary"
-                                                onClick={() => {
-                                                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url.shortenedUrl)}`;
-                                                    window.open(qrUrl, '_blank');
-                                                }}
+                                                onClick={() => handleQRClick(url.shortenedUrl)}
                                             >
-                                                QR
+                                                <QRIcon /> QR
                                             </button>
                                             <button 
                                                 className="action-btn secondary"
@@ -157,13 +209,13 @@ const MyUrls = ({ onClose }) => {
                                                     }
                                                 }}
                                             >
-                                                Share
+                                                <ShareIcon /> Share
                                             </button>
                                             <button 
                                                 className="action-btn secondary"
                                                 onClick={() => window.open(url.shortenedUrl, '_blank')}
                                             >
-                                                Open
+                                                <OpenIcon /> Open
                                             </button>
                                         </div>
                                     </div>
@@ -193,6 +245,7 @@ const MyUrls = ({ onClose }) => {
                         </div>
                     </div>
                 )}
+                {showQR && <QRModal url={selectedUrl} onClose={() => setShowQR(false)} />}
             </div>
         </div>
     );
