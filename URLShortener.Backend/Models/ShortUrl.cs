@@ -7,4 +7,5 @@ public class ShortUrl
     public string ShortCode { get; set; }
     public DateTime CreatedAt { get; set; }
     public int UsageCount { get; set; }
+    public string? UserId { get; set; }
 }

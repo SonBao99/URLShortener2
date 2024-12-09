@@ -1,28 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import './MyUrls.css';
+import { useAuth } from '../AuthContext';
 
 const MyUrls = ({ onClose }) => {
     const [recentUrls, setRecentUrls] = useState([]);
     const [isClosing, setIsClosing] = useState(false);
     const [showClearWarning, setShowClearWarning] = useState(false);
+    const { user } = useAuth();
 
     useEffect(() => {
-        const urls = JSON.parse(localStorage.getItem('recentUrls') || '[]');
-        setRecentUrls(urls);
-    }, []);
+        const fetchUrls = async () => {
+            if (user?.token) {
+                try {
+                    const response = await fetch('https://localhost:7000/api/urls', {
+                        headers: {
+                            'Authorization': `Bearer ${user.token}`
+                        }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        setRecentUrls(data);
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch URLs:', error);
+                }
+            } else {
+                // If user is not logged in, use localStorage
+                const urls = JSON.parse(localStorage.getItem('recentUrls') || '[]');
+                setRecentUrls(urls);
+            }
+        };
+
+        fetchUrls();
+    }, [user]);
 
     const handleClose = () => {
         setIsClosing(true);
         setTimeout(onClose, 300);
     };
 
-    const handleClearHistory = () => {
-        setShowClearWarning(true);
-    };
-
-    const confirmClearHistory = () => {
-        localStorage.setItem('recentUrls', '[]');
-        setRecentUrls([]);
+    const handleClearHistory = async () => {
+        if (user?.token) {
+            // Add API endpoint to clear user's URLs
+            try {
+                const response = await fetch('https://localhost:7000/api/urls/clear', {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${user.token}`
+                    }
+                });
+                if (response.ok) {
+                    setRecentUrls([]);
+                }
+            } catch (error) {
+                console.error('Failed to clear URLs:', error);
+            }
+        } else {
+            localStorage.setItem('recentUrls', '[]');
+            setRecentUrls([]);
+        }
         setShowClearWarning(false);
     };
 
@@ -150,7 +186,7 @@ const MyUrls = ({ onClose }) => {
                                 <button className="cancel-clear" onClick={() => setShowClearWarning(false)}>
                                     Cancel
                                 </button>
-                                <button className="confirm-clear" onClick={confirmClearHistory}>
+                                <button className="confirm-clear" onClick={handleClearHistory}>
                                     Clear History
                                 </button>
                             </div>

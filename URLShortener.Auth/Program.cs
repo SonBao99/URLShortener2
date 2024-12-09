@@ -53,59 +53,23 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 // Add authentication and authorization services
 builder.Services.AddAuthentication(options =>
 {
-    options.DefaultAuthenticateScheme = "ApplicationCookie";
-    options.DefaultSignInScheme = "ExternalCookie";
-    options.DefaultChallengeScheme = "Google";
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-.AddCookie("ApplicationCookie")
-.AddCookie("ExternalCookie", options =>
+.AddJwtBearer(options =>
 {
-    options.Cookie.Name = ".AspNetCore.External";
-    options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-})
-.AddGoogle(options =>
-{
-    options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
-    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
-    options.CallbackPath = "/api/auth/google-callback";
-    options.SaveTokens = true;
-    options.CorrelationCookie.SameSite = SameSiteMode.Lax;
-    options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
-    
-    options.Events = new OAuthEvents
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        OnRedirectToAuthorizationEndpoint = context =>
-        {
-            context.RedirectUri = context.RedirectUri;
-            context.Response.Redirect(context.RedirectUri);
-            return Task.CompletedTask;
-        },
-        OnRemoteFailure = context =>
-        {
-            context.Response.Redirect($"{builder.Configuration["FrontendUrl"]}/auth-callback?error={Uri.EscapeDataString(context.Failure?.Message ?? "Authentication failed")}");
-            context.HandleResponse();
-            return Task.CompletedTask;
-        }
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+        ValidAudience = builder.Configuration["JwtSettings:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]))
     };
 });
-
-// Add JWT Bearer configuration separately
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
-            ValidAudience = builder.Configuration["JwtSettings:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]))
-        };
-    });
 
 // Add services to the container
 builder.Services.AddControllers();
