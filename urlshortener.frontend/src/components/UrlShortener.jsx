@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './UrlShortener.css';
 import { useAuth } from '../AuthContext';
+import QRModal from './QRModal';
 
 const UrlShortener = ({ onUrlShortened }) => {
     const [originalUrl, setOriginalUrl] = useState('');
@@ -11,6 +12,8 @@ const UrlShortener = ({ onUrlShortened }) => {
     const [showShortenForm, setShowShortenForm] = useState(true);
     const [notification, setNotification] = useState('');
     const { user } = useAuth();
+    const [showQR, setShowQR] = useState(false);
+    const [showMyUrls, setShowMyUrls] = useState(false);
 
     const showNotification = (message) => {
         setNotification(message);
@@ -53,7 +56,6 @@ const UrlShortener = ({ onUrlShortened }) => {
                 'Content-Type': 'application/json'
             };
             
-            // Add authorization header only if user is logged in
             if (user?.token) {
                 headers['Authorization'] = `Bearer ${user.token}`;
             }
@@ -73,6 +75,18 @@ const UrlShortener = ({ onUrlShortened }) => {
 
             const data = await response.json();
             setShortenedUrl(data.shortenedUrl);
+
+            // Save to localStorage if user is not logged in
+            if (!user?.token) {
+                const recentUrls = JSON.parse(localStorage.getItem('recentUrls') || '[]');
+                const newUrl = {
+                    originalUrl,
+                    shortenedUrl: data.shortenedUrl,
+                    createdAt: new Date().toISOString()
+                };
+                localStorage.setItem('recentUrls', JSON.stringify([newUrl, ...recentUrls].slice(0, 10)));
+            }
+
             onUrlShortened({ originalUrl, shortenedUrl: data.shortenedUrl });
             setShowShortenForm(false);
         } catch (err) {
@@ -87,6 +101,20 @@ const UrlShortener = ({ onUrlShortened }) => {
         setShortenedUrl('');
         setOriginalUrl('');
         setCustomAlias('');
+    };
+
+    const handleMyUrlsClick = () => {
+        if (user) {
+            setShowMyUrls(true);
+        } else {
+            // Check if there are URLs in localStorage
+            const recentUrls = JSON.parse(localStorage.getItem('recentUrls') || '[]');
+            if (recentUrls.length > 0) {
+                setShowMyUrls(true);
+            } else {
+                showNotification('No URLs in history. Create one first!');
+            }
+        }
     };
 
     return (
@@ -166,10 +194,7 @@ const UrlShortener = ({ onUrlShortened }) => {
                             </button>
                             <button 
                                 className="action-button qr-button"
-                                onClick={() => {
-                                    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(shortenedUrl)}`;
-                                    window.open(qrUrl, '_blank');
-                                }}
+                                onClick={() => setShowQR(true)}
                                 title="Generate QR Code"
                             >
                                 QR
@@ -190,7 +215,12 @@ const UrlShortener = ({ onUrlShortened }) => {
                             </button>
                         </div>
                         <div className="bottom-buttons">
-                            <button className="secondary-button">My URLs</button>
+                            <button 
+                                className="secondary-button" 
+                                onClick={handleMyUrlsClick}
+                            >
+                                My URLs
+                            </button>
                             <button 
                                 onClick={handleShortenAnother}
                                 className="primary-button"
@@ -201,6 +231,7 @@ const UrlShortener = ({ onUrlShortened }) => {
                     </div>
                 </>
             )}
+            {showQR && <QRModal url={shortenedUrl} onClose={() => setShowQR(false)} />}
         </div>
     );
 };
