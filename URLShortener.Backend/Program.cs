@@ -3,6 +3,7 @@ using UrlShortener.Backend.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using UrlShortener.Messaging.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]))
         };
     });
+
+// Add RabbitMQ Configuration
+builder.Services.AddSingleton<IRabbitMQService>(sp =>
+{
+    var isDevelopment = builder.Environment.IsDevelopment();
+    var host = isDevelopment ? "localhost" : "rabbitmq";
+    var connectionString = $"amqp://guest:guest@{host}:5672";
+    return new RabbitMQService(connectionString);
+});
 
 var app = builder.Build();
 

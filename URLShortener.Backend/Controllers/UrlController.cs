@@ -2,13 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using UrlShortener.Backend.Data;
 using UrlShortener.Backend.Models;
-using System;
-using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
-using System.Net.Http;
-using System.Text.Json;
-using Microsoft.Extensions.Logging;
-
+using UrlShortener.Messaging.Services;
+using UrlShortener.Messaging.Models;
 namespace UrlShortener.Backend.Controllers
 {
     [ApiController]
@@ -19,13 +15,15 @@ namespace UrlShortener.Backend.Controllers
         private readonly IConfiguration _configuration;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<UrlController> _logger;
+        private readonly IRabbitMQService _rabbitMQ;
 
-        public UrlController(ApplicationDbContext context, IConfiguration configuration, IHttpClientFactory httpClientFactory, ILogger<UrlController> logger)
+        public UrlController(ApplicationDbContext context, IConfiguration configuration, IHttpClientFactory httpClientFactory, ILogger<UrlController> logger, IRabbitMQService rabbitMQ)
         {
             _context = context;
             _configuration = configuration;
             _httpClientFactory = httpClientFactory;
             _logger = logger;
+            _rabbitMQ = rabbitMQ;
         }
 
         // POST /shorten
@@ -61,6 +59,28 @@ namespace UrlShortener.Backend.Controllers
             // Save to the database
             _context.ShortUrls.Add(newUrl);
             await _context.SaveChangesAsync();
+
+            // Publish message to RabbitMQ
+            var message = new UrlCreatedMessage
+            {
+                ShortCode = newUrl.ShortCode,
+                OriginalUrl = newUrl.OriginalUrl,
+                UserId = newUrl.UserId,
+                CreatedAt = newUrl.CreatedAt
+            };
+
+            try
+            {
+                _rabbitMQ.PublishMessage(
+                    RabbitMQConstants.UrlExchange,
+                    RabbitMQConstants.UrlCreatedRoutingKey,
+                    message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish message to RabbitMQ");
+                // Continue execution, don't fail the request
+            }
 
             return Ok(new { shortenedUrl = $"{baseUrl}{newUrl.ShortCode}" });
         }
@@ -108,6 +128,19 @@ namespace UrlShortener.Backend.Controllers
             // Increment usage count
             url.UsageCount++;
             await _context.SaveChangesAsync();
+
+            // Publish visit message
+            var message = new UrlVisitedMessage
+            {
+                ShortCode = shortCode,
+                VisitedAt = DateTime.UtcNow,
+                UserId = User.Identity?.IsAuthenticated == true ? User.FindFirst(ClaimTypes.NameIdentifier)?.Value : null
+            };
+
+            _rabbitMQ.PublishMessage(
+                RabbitMQConstants.UrlExchange,
+                RabbitMQConstants.UrlVisitedRoutingKey,
+                message);
 
             return Redirect(url.OriginalUrl);
         }
