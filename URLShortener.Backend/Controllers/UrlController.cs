@@ -74,7 +74,7 @@ namespace UrlShortener.Backend.Controllers
             try
             {
                 using var cacheClient = _httpClientFactory.CreateClient();
-                var cacheResponse = await cacheClient.GetAsync($"https://localhost:7168/api/cache/{shortCode}");
+                var cacheResponse = await cacheClient.GetAsync($"https://localhost:7000/api/cache/{shortCode}");
                 if (cacheResponse.IsSuccessStatusCode)
                 {
                     var cacheResult = await cacheResponse.Content.ReadFromJsonAsync<UrlCacheResponse>();
@@ -99,7 +99,7 @@ namespace UrlShortener.Backend.Controllers
 
             // Cache the URL
             using var httpClient = _httpClientFactory.CreateClient();
-            var response = await httpClient.PostAsJsonAsync("https://localhost:7168/api/cache", new
+            var response = await httpClient.PostAsJsonAsync("https://localhost:7000/api/cache", new
             {
                 ShortCode = url.ShortCode,
                 OriginalUrl = url.OriginalUrl

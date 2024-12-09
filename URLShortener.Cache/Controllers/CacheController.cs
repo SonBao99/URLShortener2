@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/cache")]
 public class CacheController : ControllerBase
 {
     private readonly IRedisService _redisService;
