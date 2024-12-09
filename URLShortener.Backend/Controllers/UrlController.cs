@@ -5,25 +5,31 @@ using UrlShortener.Backend.Models;
 using System;
 using Microsoft.Extensions.Configuration;
 using System.Security.Claims;
+using System.Net.Http;
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace UrlShortener.Backend.Controllers
 {
     [ApiController]
-    [Route("/")]
+    [Route("api")]
     public class UrlController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly ILogger<UrlController> _logger;
 
-        public UrlController(ApplicationDbContext context, IConfiguration configuration)
+        public UrlController(ApplicationDbContext context, IConfiguration configuration, IHttpClientFactory httpClientFactory, ILogger<UrlController> logger)
         {
             _context = context;
             _configuration = configuration;
+            _httpClientFactory = httpClientFactory;
+            _logger = logger;
         }
 
         // POST /shorten
-        [Route("api/shorten")]
-        [HttpPost]
+        [HttpPost("shorten")]
         public async Task<IActionResult> ShortenUrl([FromBody] UrlRequest urlRequest)
         {
             var baseUrl = _configuration["UrlSettings:BaseUrl"];
@@ -64,11 +70,40 @@ namespace UrlShortener.Backend.Controllers
         [HttpGet]
         public async Task<IActionResult> RedirectToOriginalUrl(string shortCode)
         {
+            // Try to get URL from Redis first
+            try
+            {
+                using var cacheClient = _httpClientFactory.CreateClient();
+                var cacheResponse = await cacheClient.GetAsync($"https://localhost:7168/api/cache/{shortCode}");
+                if (cacheResponse.IsSuccessStatusCode)
+                {
+                    var cacheResult = await cacheResponse.Content.ReadFromJsonAsync<UrlCacheResponse>();
+                    if (cacheResult != null)
+                    {
+                        return Redirect(cacheResult.Url);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but continue to database lookup
+                _logger.LogError(ex, "Error accessing cache for shortCode: {ShortCode}", shortCode);
+            }
+
+            // If not in cache, get from database
             var url = await _context.ShortUrls.FirstOrDefaultAsync(u => u.ShortCode == shortCode);
             if (url == null)
             {
                 return NotFound(new { message = "Short URL not found." });
             }
+
+            // Cache the URL
+            using var httpClient = _httpClientFactory.CreateClient();
+            var response = await httpClient.PostAsJsonAsync("https://localhost:7168/api/cache", new
+            {
+                ShortCode = url.ShortCode,
+                OriginalUrl = url.OriginalUrl
+            });
 
             // Increment usage count
             url.UsageCount++;
@@ -94,8 +129,7 @@ namespace UrlShortener.Backend.Controllers
             return shortCode;
         }
 
-        [Route("api/urls")]
-        [HttpGet]
+        [HttpGet("urls")]
         public async Task<IActionResult> GetUserUrls()
         {
             var baseUrl = _configuration["UrlSettings:BaseUrl"];
@@ -117,8 +151,7 @@ namespace UrlShortener.Backend.Controllers
         }
 
         // Add this endpoint for clearing URLs
-        [Route("api/urls/clear")]
-        [HttpDelete]
+        [HttpDelete("urls/clear")]
         public async Task<IActionResult> ClearUserUrls()
         {
             string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
