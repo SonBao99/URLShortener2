@@ -186,13 +186,13 @@ const MyUrls = ({ onClose }) => {
                                                 onClick={() => navigator.clipboard.writeText(url.shortenedUrl)}
                                                 title="Copy to clipboard"
                                             >
-                                                <CopyIcon /> Copy
+                                                Copy
                                             </button>
                                             <button 
                                                 className="action-btn secondary"
                                                 onClick={() => handleQRClick(url.shortenedUrl)}
                                             >
-                                                <QRIcon /> QR
+                                                QR
                                             </button>
                                             <button 
                                                 className="action-btn secondary"
@@ -209,13 +209,13 @@ const MyUrls = ({ onClose }) => {
                                                     }
                                                 }}
                                             >
-                                                <ShareIcon /> Share
+                                                Share
                                             </button>
                                             <button 
                                                 className="action-btn secondary"
                                                 onClick={() => window.open(url.shortenedUrl, '_blank')}
                                             >
-                                                <OpenIcon /> Open
+                                                Open
                                             </button>
                                         </div>
                                     </div>
