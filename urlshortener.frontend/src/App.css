@@ -58,13 +58,11 @@
 
 .app-main {
   flex: 1;
-  display: grid;
-  grid-template-columns: 600px 1fr;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   padding: 3rem;
-  max-width: 1400px;
-  margin: 0;
   width: 100%;
-  gap: 4rem;
 }
 
 .main-content {
@@ -159,8 +157,12 @@
 }
 @media (max-width: 768px) {
   .app-main {
-    flex-direction: column;
     padding: 1rem;
+  }
+  
+  .url-shortener {
+    width: 100%;
+    max-width: 600px;
   }
   
   .features-list {

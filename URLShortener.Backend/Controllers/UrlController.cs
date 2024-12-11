@@ -5,6 +5,7 @@ using UrlShortener.Backend.Models;
 using System.Security.Claims;
 using UrlShortener.Messaging.Services;
 using UrlShortener.Messaging.Models;
+using Microsoft.AspNetCore.Authorization;
 namespace UrlShortener.Backend.Controllers
 {
     [ApiController]
@@ -33,8 +34,16 @@ namespace UrlShortener.Backend.Controllers
             var baseUrl = _configuration["UrlSettings:BaseUrl"];
             string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             
+            // Validate expiration days
+            if (urlRequest.ExpirationDays.HasValue && (urlRequest.ExpirationDays.Value <= 0 || urlRequest.ExpirationDays.Value > 365))
+            {
+                return BadRequest("Expiration days must be between 1 and 365");
+            }
+
             // Check if the URL already exists in the database
-            var existingUrl = await _context.ShortUrls.FirstOrDefaultAsync(u => u.OriginalUrl == urlRequest.OriginalUrl);
+            var existingUrl = await _context.ShortUrls
+                .FirstOrDefaultAsync(u => u.OriginalUrl == urlRequest.OriginalUrl && u.ExpirationDate > DateTime.UtcNow);
+            
             if (existingUrl != null)
             {
                 return Ok(new { shortenedUrl = $"{baseUrl}{existingUrl.ShortCode}" });
@@ -53,6 +62,7 @@ namespace UrlShortener.Backend.Controllers
                 OriginalUrl = urlRequest.OriginalUrl,
                 ShortCode = shortCode,
                 CreatedAt = DateTime.UtcNow,
+                ExpirationDate = DateTime.UtcNow.AddDays(urlRequest.ExpirationDays ?? 1),
                 UserId = userId
             };
 
@@ -90,44 +100,32 @@ namespace UrlShortener.Backend.Controllers
         [HttpGet]
         public async Task<IActionResult> RedirectToOriginalUrl(string shortCode)
         {
-            // Try to get URL from Redis first
-            try
+            var url = await _context.ShortUrls
+                .FirstOrDefaultAsync(u => u.ShortCode == shortCode && u.ExpirationDate > DateTime.UtcNow);
+            
+            if (url == null)
+                return NotFound("URL not found or has expired");
+
+            // Increment database count
+            url.UsageCount++;
+            await _context.SaveChangesAsync();
+
+            // Cache the URL and increment Redis count
+            using var httpClient = _httpClientFactory.CreateClient();
+            try 
             {
-                using var cacheClient = _httpClientFactory.CreateClient();
-                var cacheResponse = await cacheClient.GetAsync($"https://localhost:7000/api/cache/{shortCode}");
-                if (cacheResponse.IsSuccessStatusCode)
+                await httpClient.PostAsJsonAsync("https://localhost:7000/api/cache", new
                 {
-                    var cacheResult = await cacheResponse.Content.ReadFromJsonAsync<UrlCacheResponse>();
-                    if (cacheResult != null)
-                    {
-                        return Redirect(cacheResult.Url);
-                    }
-                }
+                    ShortCode = url.ShortCode,
+                    OriginalUrl = url.OriginalUrl
+                });
+
+                await httpClient.PostAsync($"https://localhost:7000/api/cache/{shortCode}/increment", null);
             }
             catch (Exception ex)
             {
-                // Log the error but continue to database lookup
-                _logger.LogError(ex, "Error accessing cache for shortCode: {ShortCode}", shortCode);
+                _logger.LogError(ex, "Failed to update cache for {ShortCode}", shortCode);
             }
-
-            // If not in cache, get from database
-            var url = await _context.ShortUrls.FirstOrDefaultAsync(u => u.ShortCode == shortCode);
-            if (url == null)
-            {
-                return NotFound(new { message = "Short URL not found." });
-            }
-
-            // Cache the URL
-            using var httpClient = _httpClientFactory.CreateClient();
-            var response = await httpClient.PostAsJsonAsync("https://localhost:7000/api/cache", new
-            {
-                ShortCode = url.ShortCode,
-                OriginalUrl = url.OriginalUrl
-            });
-
-            // Increment usage count
-            url.UsageCount++;
-            await _context.SaveChangesAsync();
 
             // Publish visit message
             var message = new UrlVisitedMessage
@@ -169,13 +167,14 @@ namespace UrlShortener.Backend.Controllers
             string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var urls = await _context.ShortUrls
-                .Where(u => u.UserId == userId)
+                .Where(u => u.UserId == userId && u.ExpirationDate > DateTime.UtcNow)
                 .OrderByDescending(u => u.CreatedAt)
                 .Select(u => new
                 {
                     originalUrl = u.OriginalUrl,
                     shortenedUrl = $"{baseUrl}{u.ShortCode}",
                     createdAt = u.CreatedAt,
+                    expirationDate = u.ExpirationDate,
                     usageCount = u.UsageCount
                 })
                 .ToListAsync();
@@ -198,11 +197,41 @@ namespace UrlShortener.Backend.Controllers
 
             return Ok();
         }
+
+        [Authorize]
+        [HttpDelete("urls/{shortCode}")]
+        public async Task<IActionResult> DeleteUrl(string shortCode)
+        {
+            string? userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            
+            var url = await _context.ShortUrls.FirstOrDefaultAsync(u => 
+                u.ShortCode == shortCode && u.UserId == userId);
+            
+            if (url == null)
+                return NotFound();
+
+            _context.ShortUrls.Remove(url);
+            await _context.SaveChangesAsync();
+
+            // Also remove from cache if it exists
+            try 
+            {
+                using var httpClient = _httpClientFactory.CreateClient();
+                await httpClient.DeleteAsync($"https://localhost:7000/api/cache/{shortCode}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to remove URL from cache: {ShortCode}", shortCode);
+            }
+
+            return Ok();
+        }
     }
 
     public class UrlRequest
     {
         public required string OriginalUrl { get; set; }
         public string? CustomAlias { get; set; }
+        public int? ExpirationDays { get; set; } // Optional, defaults to 1 if not provided
     }
 }

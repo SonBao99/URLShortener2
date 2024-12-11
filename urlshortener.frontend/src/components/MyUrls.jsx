@@ -39,6 +39,19 @@ const OpenIcon = () => (
     </svg>
 );
 
+const fetchUrlCount = async (shortCode) => {
+    try {
+        const response = await fetch(`https://localhost:7000/api/cache/${shortCode}`);
+        if (response.ok) {
+            const data = await response.json();
+            return data.visits;
+        }
+    } catch (error) {
+        console.error('Failed to fetch URL count:', error);
+    }
+    return null;
+};
+
 const MyUrls = ({ onClose }) => {
     const [recentUrls, setRecentUrls] = useState([]);
     const [isClosing, setIsClosing] = useState(false);
@@ -58,13 +71,21 @@ const MyUrls = ({ onClose }) => {
                     });
                     if (response.ok) {
                         const data = await response.json();
-                        setRecentUrls(data);
+                        // Update counts from Redis cache
+                        const updatedUrls = await Promise.all(data.map(async (url) => {
+                            const shortCode = url.shortenedUrl.split('/').pop();
+                            const visits = await fetchUrlCount(shortCode);
+                            return {
+                                ...url,
+                                usageCount: visits || url.usageCount
+                            };
+                        }));
+                        setRecentUrls(updatedUrls);
                     }
                 } catch (error) {
                     console.error('Failed to fetch URLs:', error);
                 }
             } else {
-                // If user is not logged in, use localStorage
                 const urls = JSON.parse(localStorage.getItem('recentUrls') || '[]');
                 setRecentUrls(urls);
             }
@@ -72,6 +93,29 @@ const MyUrls = ({ onClose }) => {
 
         fetchUrls();
     }, [user]);
+
+    useEffect(() => {
+        let intervalId;
+        
+        if (user?.token && recentUrls.length > 0) {
+            // Refresh counts every 10 seconds
+            intervalId = setInterval(async () => {
+                const updatedUrls = await Promise.all(recentUrls.map(async (url) => {
+                    const shortCode = url.shortenedUrl.split('/').pop();
+                    const visits = await fetchUrlCount(shortCode);
+                    return {
+                        ...url,
+                        usageCount: visits || url.usageCount
+                    };
+                }));
+                setRecentUrls(updatedUrls);
+            }, 10000);
+        }
+
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [user, recentUrls]);
 
     const handleClose = () => {
         setIsClosing(true);
@@ -129,6 +173,60 @@ const MyUrls = ({ onClose }) => {
         setShowQR(true);
     };
 
+    const handleOpenClick = async (url, index) => {
+        window.open(url.shortenedUrl, '_blank');
+        
+        if (!user?.token) {
+            // Handle non-authenticated users (localStorage)
+            const recentUrls = JSON.parse(localStorage.getItem('recentUrls') || '[]');
+            recentUrls[index] = {
+                ...recentUrls[index],
+                usageCount: (recentUrls[index].usageCount || 0) + 1
+            };
+            localStorage.setItem('recentUrls', JSON.stringify(recentUrls));
+            setRecentUrls(recentUrls);
+        } else {
+            // Handle authenticated users (fetch updated count)
+            try {
+                const shortCode = url.shortenedUrl.split('/').pop();
+                const visits = await fetchUrlCount(shortCode);
+                const updatedUrls = [...recentUrls];
+                updatedUrls[index] = {
+                    ...updatedUrls[index],
+                    usageCount: visits || updatedUrls[index].usageCount
+                };
+                setRecentUrls(updatedUrls);
+            } catch (error) {
+                console.error('Failed to update URL count:', error);
+            }
+        }
+    };
+
+    const handleDeleteUrl = async (url, index) => {
+        if (user?.token) {
+            try {
+                const shortCode = url.shortenedUrl.split('/').pop();
+                const response = await fetch(`https://localhost:7000/api/urls/${shortCode}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${user.token}`
+                    }
+                });
+                if (response.ok) {
+                    const updatedUrls = recentUrls.filter((_, i) => i !== index);
+                    setRecentUrls(updatedUrls);
+                }
+            } catch (error) {
+                console.error('Failed to delete URL:', error);
+            }
+        } else {
+            const recentUrls = JSON.parse(localStorage.getItem('recentUrls') || '[]');
+            const updatedUrls = recentUrls.filter((_, i) => i !== index);
+            localStorage.setItem('recentUrls', JSON.stringify(updatedUrls));
+            setRecentUrls(updatedUrls);
+        }
+    };
+
     return (
         <div className="my-urls-overlay" onClick={(e) => {
             if (e.target.className === 'my-urls-overlay') handleClose();
@@ -176,7 +274,7 @@ const MyUrls = ({ onClose }) => {
                                             </a>
                                         </div>
                                         <div className="url-meta">
-                                            <span>{url.usageCount} click{url.usageCount !== 1 ? 's' : ''}</span>
+                                            <span>{url.usageCount || 0} click{(url.usageCount !== 1) ? 's' : ''}</span>
                                             <span>|</span>
                                             <span>{formatTimeAgo(url.createdAt)}</span>
                                         </div>
@@ -213,9 +311,20 @@ const MyUrls = ({ onClose }) => {
                                             </button>
                                             <button 
                                                 className="action-btn secondary"
-                                                onClick={() => window.open(url.shortenedUrl, '_blank')}
+                                                onClick={() => handleOpenClick(url, index)}
                                             >
-                                                Open
+                                                <OpenIcon /> Open
+                                            </button>
+                                            <button 
+                                                className="action-btn danger"
+                                                onClick={() => handleDeleteUrl(url, index)}
+                                                title="Delete URL"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M3 6h18"></path>
+                                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                                </svg>
                                             </button>
                                         </div>
                                     </div>

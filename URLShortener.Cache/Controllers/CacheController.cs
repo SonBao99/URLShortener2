@@ -37,6 +37,13 @@ public class CacheController : ControllerBase
         var deleted = await _redisService.DeleteUrlAsync(shortCode);
         return deleted ? Ok() : NotFound();
     }
+
+    [HttpPost("{shortCode}/increment")]
+    public async Task<IActionResult> IncrementVisits(string shortCode)
+    {
+        var count = await _redisService.IncrementVisitCountAsync(shortCode);
+        return Ok(new { visits = count });
+    }
 }
 
 public class UrlCacheRequest
